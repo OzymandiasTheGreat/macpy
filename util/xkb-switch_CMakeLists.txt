@@ -1,0 +1,36 @@
+CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
+
+PROJECT( XKB-SWITCH )
+
+FIND_PROGRAM(CTAGS ctags)
+
+ADD_EXECUTABLE(xkb-switch32 XKbSwitch.cpp XKeyboard.cpp)
+SET_TARGET_PROPERTIES(xkb-switch32 PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
+TARGET_LINK_LIBRARIES(xkb-switch32 X11 xkbfile)
+
+ADD_EXECUTABLE(xkb-switch64 XKbSwitch.cpp XKeyboard.cpp)
+TARGET_LINK_LIBRARIES(xkb-switch64 X11 xkbfile)
+
+OPTION(BUILD_XKBSWITCH_LIB
+    "Build a library compatible with vim's libcall interface" ON)
+if(BUILD_XKBSWITCH_LIB)
+    SET(xkblib32 xkbswitch.x86)
+    SET(xkblib64 xkbswitch.x86_64)
+    
+    ADD_LIBRARY(${xkblib32} SHARED XKbSwitchApi.cpp XKeyboard.cpp)
+    SET_TARGET_PROPERTIES(${xkblib32} PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
+    TARGET_LINK_LIBRARIES(${xkblib32} X11 xkbfile)
+    
+    ADD_LIBRARY(${xkblib64} SHARED XKbSwitchApi.cpp XKeyboard.cpp)
+    TARGET_LINK_LIBRARIES(${xkblib64} X11 xkbfile)
+endif()
+
+ADD_CUSTOM_TARGET(ctags
+    COMMAND ${CTAGS} -R ${CMAKE_SOURCE_DIR}/*
+)
+
+INSTALL(TARGETS xkb-switch32 xkb-switch64 ${xkblib32} ${xkblib64}
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib OPTIONAL
+)
+

@@ -3,3 +3,6 @@ __pycache__
 *_old.*
 todo
 VMsync.sh
+_build
+_templates
+_static

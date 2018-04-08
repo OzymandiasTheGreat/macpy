@@ -1,0 +1,3 @@
+[submodule "xkb-switch"]
+	path = xkb-switch
+	url = https://github.com/ierton/xkb-switch
