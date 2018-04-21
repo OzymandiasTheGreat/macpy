@@ -2,22 +2,13 @@
 
 from Xlib import display
 from Xlib.error import DisplayNameError
+from ..types.dummy import Display
 
-
-class DummyDisplay(object):
-
-	def get_atom(self, string):
-
-		return 0
-
-	def close(self):
-
-		pass
 
 try:
 	_display = display.Display()
 except DisplayNameError:
-	_display = DummyDisplay()
+	_display = Display()
 
 
 NET_WM_PID = _display.get_atom('_NET_WM_PID')

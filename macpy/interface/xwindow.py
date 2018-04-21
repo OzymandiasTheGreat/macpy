@@ -5,7 +5,7 @@ from threading import Thread
 from six import with_metaclass
 from Xlib import display, X, Xutil
 from Xlib.protocol import event as xevent
-from Xlib.error import BadWindow
+from Xlib.error import BadWindow, DisplayNameError
 from ..types.metawindow import MetaWindow
 from ..constant.xatom import NET_WM_PID, NET_WM_VISIBLE_NAME, NET_WM_NAME
 from ..constant.xatom import NET_CLIENT_LIST, NET_ACTIVE_WINDOW, WM_STATE
@@ -16,10 +16,14 @@ from ..constant.xatom import WM_CHANGE_STATE, NET_MOVERESIZE_WINDOW
 from ..constant.xatom import NET_CLOSE_WINDOW
 from ..event import WindowEventType as WinEType, WindowEvent, WindowState
 from ..types.tuples import WinPos, WinSize
+from ..types.dummy import Display
 
 class XWindow(with_metaclass(MetaWindow)):
 
-	disp = display.Display()
+	try:
+		disp = display.Display()
+	except DisplayNameError:
+		disp = Display()
 	root = disp.screen().root
 
 	hook = None
