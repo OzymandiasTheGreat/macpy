@@ -10,6 +10,10 @@ class DummyDisplay(object):
 
 		return 0
 
+	def close(self):
+
+		pass
+
 try:
 	_display = display.Display()
 except DisplayNameError:
