@@ -1,4 +1,8 @@
-from enum import Enum, IntFlag
+import sys
+if sys.version_info >= (3, 6):
+	from enum import Enum, IntFlag
+else:
+	from aenum import Enum, IntFlag
 
 WH_KEYBOARD_LL = 13
 WH_MOUSE_LL = 14

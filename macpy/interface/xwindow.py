@@ -2,6 +2,7 @@
 
 import time
 from threading import Thread
+from six import with_metaclass
 from Xlib import display, X, Xutil
 from Xlib.protocol import event as xevent
 from Xlib.error import BadWindow
@@ -16,7 +17,7 @@ from ..constant.xatom import NET_CLOSE_WINDOW
 from ..event import WindowEventType as WinEType, WindowEvent, WindowState
 from ..types.tuples import WinPos, WinSize
 
-class XWindow(metaclass=MetaWindow):
+class XWindow(with_metaclass(MetaWindow)):
 
 	disp = display.Display()
 	root = disp.screen().root

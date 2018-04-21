@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 
-from queue import Queue
+from __future__ import print_function
+try:
+	from queue import Queue
+except ImportError:
+	from Queue import Queue
 from threading import Thread, enumerate as thread_enum
 import traceback
 from Xlib import display, X
@@ -150,8 +154,8 @@ class EvPointer(object):
 			except Exception as e:
 				print(
 					'Error in EvPointer mainloop: \n',
-					*traceback.format_exception(
-						type(e), e, e.__traceback__))
+					''.join(traceback.format_exception(
+						type(e), e, e.__traceback__)))
 			self.queue.task_done()
 
 	def enqueue(self, method, *args):

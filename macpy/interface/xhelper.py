@@ -2,7 +2,10 @@
 
 from subprocess import check_output
 from threading import Thread, Condition
-from queue import Queue
+try:
+	from queue import Queue
+except ImportError:
+	from Queue import Queue
 import re
 import os.path
 import sys
@@ -91,7 +94,7 @@ class XTranslate(object):
 			if NAME['ALTGR'] in keysyms:
 				modmask['ALTGR'] = mask
 				if ALTGR:
-					modmap['ALTGR'] = (ALTGR, *keycodes)
+					modmap['ALTGR'] = (ALTGR, ) + keycodes
 				else:
 					modmap['ALTGR'] = keycodes
 			if NAME['CTRL'] in keysyms:
@@ -291,7 +294,7 @@ class XLayout(Thread):
 				result = tuple()
 		else:
 			output = check_output(
-				[*self.gsettings, 'sources'], universal_newlines=True)
+				self.gsettings + ['sources'], universal_newlines=True)
 			eval_output = literal_eval(output)
 			result = tuple(tuple(lo.split('+')) if '+' in lo else (lo, '')
 				for cfg, lo in eval_output)
@@ -329,7 +332,7 @@ class XLayout(Thread):
 	def gsettings_get_layout(self):
 
 		output = check_output(
-			[*self.gsettings, 'mru-sources'], universal_newlines=True)
+			self.gsettings + ['mru-sources'], universal_newlines=True)
 		eval_output = literal_eval(output)
 		layout = eval_output[0][1]
 		return tuple(layout.split('+')) if '+' in layout else (layout, '')

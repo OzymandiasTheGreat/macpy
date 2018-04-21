@@ -3,6 +3,7 @@ from threading import Thread
 from ctypes import windll, create_unicode_buffer, POINTER, byref, wstring_at
 from ctypes import WINFUNCTYPE, sizeof
 from ctypes import c_void_p, c_wchar, c_uint, c_int, c_long, c_bool
+from six import with_metaclass
 from ..types.metawindow import MetaWindow
 from ..constant.windows import OBJID_WINDOW, EVENT, WINEVENT, PM_REMOVE, GA, SW
 from ..constant.windows import WM_CLOSE
@@ -11,7 +12,7 @@ from ..types.structures import Point, WINDOWPLACEMENT, RECT
 from ..types.tuples import WinPos, WinSize
 
 
-class WinWindow(metaclass=MetaWindow):
+class WinWindow(with_metaclass(MetaWindow)):
 
 	hook = None
 

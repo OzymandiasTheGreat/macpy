@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 
-from queue import Queue
+from __future__ import print_function
+try:
+	from queue import Queue
+except ImportError:
+	from Queue import Queue
 from threading import Thread
 import traceback
 from Xlib import display, X
@@ -51,8 +55,8 @@ class XPointer(object):
 			except Exception as e:
 				print(
 					'Error in XPointer mainloop: \n',
-					*traceback.format_exception(
-						type(e), e, e.__traceback__))
+					''.join(traceback.format_exception(
+						type(e), e, e.__traceback__)))
 			self.queue.task_done()
 
 	def enqueue(self, method, *args):

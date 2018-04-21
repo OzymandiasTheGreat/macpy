@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 
-
-from enum import Enum, auto
-from time import monotonic
+import sys
+if sys.version_info >= (3, 6):
+	from enum import Enum, auto
+else:
+	from aenum import Enum, auto
+try:
+	from time import monotonic
+except ImportError:
+	from monotonic import monotonic
 
 
 class PointerAxis(Enum):
@@ -67,7 +73,7 @@ class PointerEventMotion(Event):
 
 	def __init__(self, position, modifiers):
 
-		super().__init__()
+		Event.__init__(self)
 		self.position = position
 		self.modifiers = modifiers
 
@@ -85,7 +91,7 @@ class PointerEventButton(Event):
 
 	def __init__(self, button, state, modifiers):
 
-		super().__init__()
+		Event.__init__(self)
 		self.button = button
 		self.state = state
 		self.modifiers = modifiers
@@ -103,7 +109,7 @@ class PointerEventAxis(Event):
 
 	def __init__(self, value, axis, modifiers):
 
-		super().__init__()
+		Event.__init__(self)
 		self.value = value
 		self.axis = axis
 		self.modifiers = modifiers
@@ -125,7 +131,7 @@ class KeyboardEvent(Event):
 
 	def __init__(self, key, state, char, modifiers, locks):
 
-		super().__init__()
+		Event.__init__(self)
 		self.key = key
 		self.state = state
 		self.char = char
@@ -146,7 +152,7 @@ class HotKey(Event):
 
 	def __init__(self, key, modifiers):
 
-		super().__init__()
+		Event.__init__(self)
 		self.key = key
 		self.modifiers = frozenset(modifiers)
 
@@ -179,7 +185,7 @@ class HotString(Event):
 
 	def __init__(self, string, triggers, trigger=None):
 
-		super().__init__()
+		Event.__init__(self)
 		self.string = string
 		self.triggers = frozenset(triggers)
 		self.trigger = trigger
@@ -209,6 +215,6 @@ class WindowEvent(Event):
 
 	def __init__(self, window, event_type):
 
-		super().__init__()
+		Event.__init__(self)
 		self.window = window
 		self.type = event_type

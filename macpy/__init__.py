@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from six import with_metaclass
 from .version import __version__
 from .key import Key, KeyState
 from .event import PointerAxis, WindowEventType, WindowState, Event, WindowEvent
@@ -280,7 +281,7 @@ class Pointer(object):
 		self._interface.click(key, state)
 
 
-class Window(metaclass=MetaWindow):
+class Window(with_metaclass(MetaWindow)):
 	"""Window interface object.
 
 	Allows manipulating windows on supported platforms:

@@ -1,8 +1,12 @@
+from __future__ import print_function
 import traceback
 import time
 import atexit
 from threading import Thread
-from queue import Queue, Empty
+try:
+	from queue import Queue, Empty
+except ImportError:
+	from Queue import Queue, Empty
 from collections import deque
 from ctypes import WINFUNCTYPE, windll, wintypes, byref, create_unicode_buffer
 from ctypes import POINTER, sizeof
@@ -59,7 +63,8 @@ class WinKeyboard(object):
 				method(*args)
 			except Exception as e:
 				print('Error in WinKeyboard mainloop: \n',
-					*traceback.format_exception(type(e), e, e.__traceback__))
+					''.join(
+						traceback.format_exception(type(e), e, e.__traceback__)))
 			self.queue.task_done()
 
 	def enqueue(self, method, *args):
@@ -115,7 +120,7 @@ class WinKeyboard(object):
 				time.sleep(0.005)
 		except Exception as e:
 			print('Error in WinKeyboard hook loop: \n',
-				*traceback.format_exception(type(e), e, e.__traceback__))
+				''.join(traceback.format_exception(type(e), e, e.__traceback__)))
 		finally:
 			windll.user32.UnhookWindowsHookEx(hID)
 

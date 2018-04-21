@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 
-from enum import Enum
+import sys
+if sys.version_info >= (3, 6):
+	from enum import Enum
+else:
+	from aenum import Enum
 from collections import Sequence
 from .types.undefenum import UndefEnum, export
 from .constant.VK import VirtualKeycode as VK

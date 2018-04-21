@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 
-from queue import Queue
+from __future__ import print_function
+try:
+	from queue import Queue
+except ImportError:
+	from Queue import Queue
 from threading import Thread
 import traceback
 import atexit
@@ -43,8 +47,8 @@ class WinPointer(object):
 			except Exception as e:
 				print(
 					'Error in WinPointer mainloop: \n',
-					*traceback.format_exception(
-						type(e), e, e.__traceback__))
+					''.join(traceback.format_exception(
+						type(e), e, e.__traceback__)))
 			self.queue.task_done()
 
 	def enqueue(self, method, *args):
@@ -93,7 +97,7 @@ class WinPointer(object):
 					None, None, 0, 0, PM_REMOVE)
 		except Exception as e:
 			print('Error in WinPointer hook loop: \n',
-				*traceback.format_exception(type(e), e, e.__traceback__))
+				''.join(traceback.format_exception(type(e), e, e.__traceback__)))
 		finally:
 			windll.user32.UnhookWindowsHookEx(hID)
 

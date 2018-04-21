@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 
+from __future__ import print_function
 import traceback
 from threading import Thread
-from queue import Queue
+try:
+	from queue import Queue
+except ImportError:
+	from Queue import Queue
 import time
 from itertools import combinations
 from collections import deque
@@ -40,8 +44,8 @@ class XKeyboard(object):
 				method(*args)
 			except Exception as e:
 				print('Error in XKeyboard mainloop: \n',
-					*traceback.format_exception(
-						type(e), e, e.__traceback__))
+					''.join(traceback.format_exception(
+						type(e), e, e.__traceback__)))
 			self.queue.task_done()
 
 	def enqueue(self, method, *args):
@@ -183,7 +187,11 @@ class XKeyboard(object):
 					modifiers = []
 					for mod, state in mods._asdict().items():
 						if state:
-							modifiers.append(getattr(Modifiers, mod)[0])
+							try:
+								modifiers.append(getattr(Modifiers, mod)[0])
+							except AttributeError:
+								pass # ALTGR is only defined under X so we
+									 # ignore it here for consistency
 					hotkey = HotKey(key, modifiers)
 					if hotkey in self.hk_callbacks:
 						self.enqueue(self.hk_callbacks[hotkey], hotkey)

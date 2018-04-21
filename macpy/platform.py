@@ -4,7 +4,10 @@ import sys
 import os
 import getpass
 from subprocess import check_output
-from enum import Enum, auto
+if sys.version_info >= (3, 6):
+	from enum import Enum, auto
+else:
+	from aenum import Enum, auto
 
 
 class Platform(Enum):
