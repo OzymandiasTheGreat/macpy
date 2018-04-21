@@ -4,7 +4,7 @@ macpy
 [mac]ro + [py]thon, pronounced like magpie.
 
 This package provides easy keyboard/pointer/window management macro creation
-and GUI automation for python.
+and GUI automation for python versions 2.7 and 3.4+.
 Currently it works on Windows and Linux (both under X and with limited
 functionality under Wayland).
 Among it's features are:
