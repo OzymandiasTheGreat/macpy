@@ -3,7 +3,7 @@
 import sys
 import os
 import getpass
-from subprocess import check_output
+from subprocess import check_output, CalledProcessError
 if sys.version_info >= (3, 6):
 	from enum import Enum, auto
 else:
@@ -40,7 +40,7 @@ elif sys.platform.startswith('linux'):
 			PLATFORM = Platform.WAYLAND
 		else:
 			PLATFORM = Platform.X11
-	except (FileNotFoundError, NameError):
+	except (FileNotFoundError, NameError, CalledProcessError):
 		PLATFORM = Platform.X11
 else:
 	PLATFORM = Platform.X11

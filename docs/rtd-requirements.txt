@@ -1,0 +1,6 @@
+python-xlib
+evdev
+python-libinput
+aenum
+monotonic
+
