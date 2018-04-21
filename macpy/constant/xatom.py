@@ -1,9 +1,19 @@
 #!/usr/bin/env python3
 
 from Xlib import display
+from Xlib.error import DisplayNameError
 
 
-_display = display.Display()
+class DummyDisplay(object):
+
+	def get_atom(self, string):
+
+		return 0
+
+try:
+	_display = display.Display()
+except DisplayNameError:
+	_display = DummyDisplay()
 
 
 NET_WM_PID = _display.get_atom('_NET_WM_PID')
