@@ -14,12 +14,15 @@ Pointer
 
 .. autoclass:: PointerEventMotion
    :members:
+   :special-members: __init__
 
 .. autoclass:: PointerEventButton
    :members:
+   :special-members: __init__
 
 .. autoclass:: PointerEventAxis
    :members:
+   :special-members: __init__
 
 
 Keyboard
@@ -27,6 +30,7 @@ Keyboard
 
 .. autoclass:: KeyboardEvent
    :members:
+   :special-members: __init__
 
 .. autoclass:: HotKey
    :members:

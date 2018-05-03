@@ -73,6 +73,13 @@ class PointerEventMotion(Event):
 	"""
 
 	def __init__(self, x, y, modifiers):
+		"""Event representing pointer motion.
+
+		Args:
+			x (int): Pointer position on x axis in pixels.
+			y (int): Pointer position on y axis in pixels.
+			modifiers (dict): Modifier key state at the time of this event.
+		"""
 
 		Event.__init__(self)
 		self.position = MousePos(x, y)
@@ -91,6 +98,16 @@ class PointerEventButton(Event):
 	"""
 
 	def __init__(self, x, y, button, state, modifiers):
+		"""Event representing button press/release.
+
+		Args:
+			x (int): Pointer position on x axis in pixels.
+			y (int): Pointer position on y axis in pixels.
+			button (~macpy.key.Key): Button that was pressed/released.
+			state (~macpy.key.KeyState): Whether the button was pressed or
+				released.
+			modifiers (dict): Modifier key state at the time of this event.
+		"""
 
 		Event.__init__(self)
 		self.position = MousePos(x, y)
@@ -110,6 +127,16 @@ class PointerEventAxis(Event):
 	"""
 
 	def __init__(self, x, y, value, axis, modifiers):
+		"""Event representing scrolling.
+
+		Args:
+			x (int): Pointer position on x axis in pixels.
+			y (int): Pointer position on y axis in pixels.
+			value (int): The amount scrolled, exact interpretation of this
+				value is platform-specific.
+			axis (.PointerAxis): The axis along which to scroll.
+			modifiers (dict): Modifier key state at the time of this event.
+		"""
 
 		Event.__init__(self)
 		self.position = MousePos(x, y)
@@ -133,6 +160,17 @@ class KeyboardEvent(Event):
 	"""
 
 	def __init__(self, key, state, char, modifiers, locks):
+		"""Event representing key press/release.
+
+		Args:
+			key (~macpy.key.Key): The key that will be pressed/released.
+			state (~macpy.key.KeyState): Whether the key will be pressed or
+				released.
+			char (str): The character that will be typed. Currently this is
+				ignored, you can set it to :obj:`None`.
+			modifiers (dict): Modifier key state at the time of this event.
+			locks (dict): Lock key state at the time of this event.
+		"""
 
 		Event.__init__(self)
 		self.key = key
