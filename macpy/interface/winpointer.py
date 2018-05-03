@@ -14,10 +14,10 @@ from ..key import Key, KeyState
 from ..event import PointerAxis
 from ..event import PointerEventMotion, PointerEventButton, PointerEventAxis
 from ..types.tuples import MousePos, Modifiers, MouseEvent
-from ..types.structures import MSLLHOOKSTRUCT, INPUT, INPUTunion, MOUSEINPUT
+from ..types.structures import MSLLHOOKSTRUCT, INPUT, INPUTunion, MOUSEINPUT, Point
 from ..constant.windows import WH_MOUSE_LL, PM_REMOVE, WHEEL_DELTA, MouseWM
 from ..constant.windows import InputType, MOUSEEVENTF, SM_CXSCREEN, SM_CYSCREEN
-from ..constant.windows import XBUTTON1, XBUTTON2
+from ..constant.windows import XBUTTON1, XBUTTON2, LLMHF_INJECTED
 
 
 class WinPointer(object):
@@ -28,6 +28,10 @@ class WinPointer(object):
 	windll.user32.SendInput.restype = c_uint
 	windll.user32.GetSystemMetrics.argtypes = (c_int, )
 	windll.user32.GetSystemMetrics.restype = c_int
+	windll.user32.GetCursorPos.argtypes = (POINTER(Point), )
+	windll.user32.GetCursorPos.restype = c_bool
+	windll.user32.GetAsyncKeyState.argtypes = (c_int, )
+	windll.user32.GetAsyncKeyState.restype = c_short
 
 	def __init__(self):
 
@@ -55,10 +59,11 @@ class WinPointer(object):
 
 		self.queue.put_nowait((method, args))
 
-	def install_pointer_hook(self, callback):
+	def install_pointer_hook(self, callback, grab=False):
 
 		self.stop = False
 		self.hook_callback = callback
+		self.hook_grab = grab
 		self.hook = Thread(target=self._hook, name='WinPointer hook loop')
 		self.hook.start()
 
@@ -81,7 +86,10 @@ class WinPointer(object):
 			event = MouseEvent(
 				wParam, msllhook.pt, msllhook.mouseData, msllhook.flags)
 			self.enqueue(self.process_event, event)
-			return windll.user32.CallNextHookEx(hID, nCode, wParam, lParam)
+			if not self.hook_grab or event.flags & LLMHF_INJECTED:
+				return windll.user32.CallNextHookEx(hID, nCode, wParam, lParam)
+			else:
+				return True
 
 		try:
 			CMPFUNC = WINFUNCTYPE(c_int, c_int, c_int, POINTER(MSLLHOOKSTRUCT))
@@ -102,6 +110,9 @@ class WinPointer(object):
 			windll.user32.UnhookWindowsHookEx(hID)
 
 	def process_event(self, event):
+
+		if event.flags & LLMHF_INJECTED:
+			return
 
 		mods = {
 			'SHIFT': False,
@@ -125,49 +136,61 @@ class WinPointer(object):
 			mods['META'] = True
 
 		msg_type = MouseWM(event.message)
+		fresh_point = Point()
+		windll.user32.GetCursorPos(byref(fresh_point))
 		if msg_type == MouseWM.WM_MOUSEMOVE:
 			self.hook_callback(PointerEventMotion(
-				MousePos(event.point.x, event.point.y), Modifiers(**mods)))
+				fresh_point.x, fresh_point.y, mods))
 		elif msg_type == MouseWM.WM_LBUTTONDOWN:
 			self.hook_callback(PointerEventButton(
-				Key.BTN_LEFT, KeyState.PRESSED, Modifiers(**mods)))
+				fresh_point.x, fresh_point.y,
+				Key.BTN_LEFT, KeyState.PRESSED, mods))
 		elif msg_type == MouseWM.WM_LBUTTONUP:
 			self.hook_callback(PointerEventButton(
-				Key.BTN_LEFT, KeyState.RELEASED, Modifiers(**mods)))
+				fresh_point.x, fresh_point.y,
+				Key.BTN_LEFT, KeyState.RELEASED, mods))
 		elif msg_type == MouseWM.WM_MBUTTONDOWN:
 			self.hook_callback(PointerEventButton(
-				Key.BTN_MIDDLE, KeyState.PRESSED, Modifiers(**mods)))
+				fresh_point.x, fresh_point.y,
+				Key.BTN_MIDDLE, KeyState.PRESSED, mods))
 		elif msg_type == MouseWM.WM_MBUTTONUP:
 			self.hook_callback(PointerEventButton(
-				Key.BTN_MIDDLE, KeyState.RELEASED, Modifiers(**mods)))
+				fresh_point.x, fresh_point.y,
+				Key.BTN_MIDDLE, KeyState.RELEASED, mods))
 		elif msg_type == MouseWM.WM_RBUTTONDOWN:
 			self.hook_callback(PointerEventButton(
-				Key.BTN_RIGHT, KeyState.PRESSED, Modifiers(**mods)))
+				fresh_point.x, fresh_point.y,
+				Key.BTN_RIGHT, KeyState.PRESSED, mods))
 		elif msg_type == MouseWM.WM_RBUTTONUP:
 			self.hook_callback(PointerEventButton(
-				Key.BTN_RIGHT, KeyState.RELEASED, Modifiers(**mods)))
+				fresh_point.x, fresh_point.y,
+				Key.BTN_RIGHT, KeyState.RELEASED, mods))
 		elif msg_type == MouseWM.WM_XBUTTONDOWN:
 			if (event.data >> 16) & XBUTTON1:
 				button = Key.BTN_SIDE
 			else:
 				button = Key.BTN_EXTRA
 			self.hook_callback(PointerEventButton(
-				button, KeyState.PRESSED, Modifiers(**mods)))
+				fresh_point.x, fresh_point.y,
+				button, KeyState.PRESSED, mods))
 		elif msg_type == MouseWM.WM_XBUTTONUP:
 			if (event.data >> 16) & XBUTTON1:
 				button = Key.BTN_SIDE
 			else:
 				button = Key.BTN_EXTRA
 			self.hook_callback(PointerEventButton(
-				button, KeyState.RELEASED, Modifiers(**mods)))
+				fresh_point.x, fresh_point.y,
+				button, KeyState.RELEASED, mods))
 		if msg_type == MouseWM.WM_MOUSEWHEEL:
 			value = -((event.data >> 16) / WHEEL_DELTA)
 			self.hook_callback(PointerEventAxis(
-				value, PointerAxis.VERTICAL, Modifiers(**mods)))
+				fresh_point.x, fresh_point.y,
+				value, PointerAxis.VERTICAL, mods))
 		elif msg_type == MouseWM.WM_MOUSEHWHEEL:
 			value = ((event.data >> 16) / WHEEL_DELTA)
 			self.hook_callback(PointerEventAxis(
-				value, PointerAxis.HORIZONTAL, Modifiers(**mods)))
+				fresh_point.x, fresh_point.y,
+				value, PointerAxis.HORIZONTAL, mods))
 
 	def send_input(self, *inputs):
 
@@ -182,12 +205,17 @@ class WinPointer(object):
 		return INPUT(InputType.MOUSE, INPUTunion(
 			mi=MOUSEINPUT(dx, dy, data, flags, 0, None)))
 
-	def warp(self, x, y):
+	def warp(self, x, y, relative=False):
 
-		dx = x * round(65535 / windll.user32.GetSystemMetrics(SM_CXSCREEN))
-		dy = y * round(65535 / windll.user32.GetSystemMetrics(SM_CYSCREEN))
-		self.enqueue(self.send_input, self.pack_input(
-			dx, dy, 0, MOUSEEVENTF.MOVE | MOUSEEVENTF.ABSOLUTE))
+		flags = MOUSEEVENTF.MOVE
+		if relative:
+			dx = x
+			dy = y
+		else:
+			dx = x * round(65535 / windll.user32.GetSystemMetrics(SM_CXSCREEN))
+			dy = y * round(65535 / windll.user32.GetSystemMetrics(SM_CYSCREEN))
+			flags |= MOUSEEVENTF.ABSOLUTE
+		self.enqueue(self.send_input, self.pack_input(dx, dy, 0, flags))
 
 	def scroll(self, axis, value):
 
@@ -268,3 +296,15 @@ class WinPointer(object):
 				pass
 		else:
 			raise RuntimeError('Invalid state')
+
+	def get_button_state(self, button):
+
+		output = windll.user32.GetAsyncKeyState(button.vk)
+		return KeyState(bool(output >> 8))
+
+	@property
+	def position(self):
+
+		point = Point()
+		windll.user32.GetCursorPos(byref(point))
+		return MousePos(point.x, point.y)

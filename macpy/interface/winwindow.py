@@ -6,10 +6,15 @@ from ctypes import c_void_p, c_wchar, c_uint, c_int, c_long, c_bool
 from six import with_metaclass
 from ..types.metawindow import MetaWindow
 from ..constant.windows import OBJID_WINDOW, EVENT, WINEVENT, PM_REMOVE, GA, SW
-from ..constant.windows import WM_CLOSE
+from ..constant.windows import WM_CLOSE, MK, MouseWM, KeyWM, WHEEL_DELTA
+from ..constant.windows import KEYEVENTF, InputType
 from ..event import WindowEvent, WindowEventType as WinEType, WindowState
-from ..types.structures import Point, WINDOWPLACEMENT, RECT
+from ..event import PointerEventMotion, PointerEventButton, PointerEventAxis
+from ..event import KeyboardEvent, PointerAxis
+from ..types.structures import Point, WINDOWPLACEMENT, RECT, INPUT, INPUTunion
+from ..types.structures import KEYBDINPUT
 from ..types.tuples import WinPos, WinSize
+from ..key import Key, KeyState, Modifiers
 
 
 class WinWindow(with_metaclass(MetaWindow)):
@@ -55,6 +60,12 @@ class WinWindow(with_metaclass(MetaWindow)):
 	windll.user32.PostMessageW.restype = c_bool
 	windll.user32.EndTask.argtypes = (c_void_p, c_bool, c_bool)
 	windll.user32.EndTask.restype = c_bool
+	windll.user32.PostMessageW.argtypes = (c_void_p, c_uint, c_int, c_long)
+	windll.user32.PostMessageW.restype = c_bool
+	windll.user32.SendInput.argtypes = (c_uint, c_void_p, c_int)
+	windll.user32.SendInput.restype = c_uint
+	windll.user32.ChildWindowFromPoint.argtypes = (c_void_p, Point)
+	windll.user32.ChildWindowFromPoint.restype = c_void_p
 
 	def __init__(self, hwnd):
 
@@ -256,3 +267,201 @@ class WinWindow(with_metaclass(MetaWindow)):
 	def force_close(self):
 
 		windll.user32.EndTask(self.hwnd, False, True)
+
+	def send_input(self, *inputs):
+
+		nInputs = len(inputs)
+		LPINPUT = INPUT * nInputs
+		pInputs = LPINPUT(*inputs)
+		cbSize = sizeof(INPUT)
+		windll.user32.SendInput(nInputs, pInputs, cbSize)
+
+	def pack_input(self, keycode, flags):
+
+		wScan = keycode
+		if flags & KEYEVENTF.UNICODE:
+			wVk = 0
+		else:
+			wVk = keycode
+		return INPUT(InputType.KEYBOARD, INPUTunion(
+				ki=KEYBDINPUT(wVk, wScan, flags, 0, None)))
+
+	def send_event(self, event):
+
+		mods = event.modifiers._asdict()
+		if hasattr(event, 'state'):
+			if event.state is KeyState.PRESSED:
+				for mod, active in mods.items():
+					if active:
+						if mod is 'ALTGR':
+							self.send_input(self.pack_input(
+								Key.KEY_RIGHTALT.vk, 0))
+							self.send_input(self.pack_input(
+								Key.KEY_LEFTCTRL.vk, 0))
+						else:
+							self.send_input(self.pack_input(
+								getattr(Modifiers, mod)[0].vk, 0))
+				if isinstance(event, KeyboardEvent):
+					self.send_key(event.key, event.state, event.modifiers.ALT)
+				elif isinstance(event, PointerEventButton):
+					flags = 0
+					if event.modifiers.SHIFT:
+						flags |= MK.SHIFT
+					if event.modifiers.CTRL:
+						flags |= MK.CONTROL
+					self.send_button(
+						event.position, event.button, event.state, flags)
+				else:
+					raise TypeError('Unsupported event type')
+			elif event.state is KeyState.RELEASED:
+				if isinstance(event, KeyboardEvent):
+					self.send_key(event.key, event.state, event.modifiers.ALT)
+				elif isinstance(event, PointerEventButton):
+					flags = 0
+					if event.modifiers.SHIFT:
+						flags |= MK.SHIFT
+					if event.modifiers.CTRL:
+						flags |= MK.CONTROL
+					self.send_button(
+						event.position, event.button, event.state, flags)
+				else:
+					raise TypeError('Unsupported event type')
+				for mod, active in mods.items():
+					if active:
+						if mod is 'ALTGR':
+							self.send_input(self.pack_input(
+								Key.KEY_LEFTCTRL.vk, KEYEVENTF.KEYUP))
+							self.send_input(self.pack_input(
+								Key.KEY_RIGHTALT.vk, KEYEVENTF.KEYUP))
+						else:
+							self.send_input(self.pack_input(
+								getattr(Modifiers, mod)[0].vk, KEYEVENTF.KEYUP))
+			else:
+				raise TypeError('Unsupported state')
+		else:
+			flags = 0
+			if event.modifiers.SHIFT:
+				flags |= MK.SHIFT
+			if event.modifiers.CTRL:
+				flags |= MK.CONTROL
+			for mod, active in mods.items():
+				if active:
+					if mod is 'ALTGR':
+						self.send_input(self.pack_input(Key.KEY_RIGHTALT.vk, 0))
+						self.send_input(self.pack_input(Key.KEY_LEFTCTRL.vk, 0))
+					else:
+						self.send_input(self.pack_input(
+							getattr(Modifiers, mod)[0].vk, 0))
+			if isinstance(event, PointerEventMotion):
+				self.send_motion(event.position, flags)
+			elif isinstance(event, PointerEventAxis):
+				self.send_axis(event.position, event.value, event.axis, flags)
+			else:
+				raise TypeError('Unsupported event type')
+			for mod, active in mods.items():
+				if active:
+					if mod is 'ALTGR':
+						self.send_input(self.pack_input(
+							Key.KEY_LEFTCTRL.vk, KEYEVENTF.KEYUP))
+						self.send_input(self.pack_input(
+							Key.KEY_RIGHTALT.vk, KEYEVENTF.KEYUP))
+					else:
+						self.send_input(self.pack_input(
+							getattr(Modifiers, mod)[0].vk, KEYEVENTF.KEYUP))
+
+	def send_key(self, key, state, alt):
+
+		wParam = key.vk
+		if alt:
+			if state is KeyState.PRESSED:
+				lParam = 0 | 1 << 29
+				windll.user32.PostMessageW(
+					self.hwnd, KeyWM.WM_SYSKEYDOWN, wParam, lParam)
+			else:
+				lParam = 1 | 1 << 29 | 1 << 30 | 1 << 31
+				windll.user32.PostMessageW(
+					self.hwnd, KeyWM.WM_SYSKEYUP, wParam, lParam)
+		else:
+			if state is KeyState.PRESSED:
+				lParam = 0
+				windll.user32.PostMessageW(
+					self.hwnd, KeyWM.WM_KEYDOWN, wParam, lParam)
+			else:
+				lParam = 1 | 1 << 30 | 1 << 31
+				windll.user32.PostMessageW(
+					self.hwnd, KeyWM.WM_KEYUP, wParam, lParam)
+
+	def send_button(self, position, button, state, flags):
+
+		wParam = 0 | flags
+		lParam = position.x | position.y << 16
+		if button is Key.BTN_LEFT:
+			if state is KeyState.PRESSED:
+				windll.user32.PostMessageW(
+					self.hwnd, MouseWM.WM_LBUTTONDOWN,
+					wParam | MK.LBUTTON, lParam)
+			else:
+				windll.user32.PostMessageW(
+					self.hwnd, MouseWM.WM_LBUTTONUP,
+					wParam | MK.LBUTTON, lParam)
+		elif button is Key.BTN_MIDDLE:
+			if state is KeyState.PRESSED:
+				windll.user32.PostMessageW(
+					self.hwnd, MouseWM.WM_MBUTTONDOWN,
+					wParam | MK.MBUTTON, lParam)
+			else:
+				windll.user32.PostMessageW(
+					self.hwnd, MouseWM.WM_MBUTTONUP,
+					wParam | MK.MBUTTON, lParam)
+		elif button is Key.BTN_RIGHT:
+			if state is KeyState.PRESSED:
+				windll.user32.PostMessageW(
+					self.hwnd, MouseWM.WM_RBUTTONDOWN,
+					wParam | MK.RBUTTON, lParam)
+			else:
+				windll.user32.PostMessageW(
+					self.hwnd, MouseWM.WM_RBUTTONUP,
+					wParam | MK.RBUTTON, lParam)
+		elif button is Key.BTN_SIDE:
+			if state is KeyState.PRESSED:
+				windll.user32.PostMessageW(
+					self.hwnd, MouseWM.WM_XBUTTONDOWN,
+					wParam | MK.XBUTTON1, lParam)
+			else:
+				windll.user32.PostMessageW(
+					self.hwnd, MouseWM.WM_XBUTTONUP,
+					wParam | MK.XBUTTON1, lParam)
+		elif button is Key.BTN_EXTRA:
+			if state is KeyState.PRESSED:
+				windll.user32.PostMessageW(
+					self.hwnd, MouseWM.WM_XBUTTONDOWN,
+					wParam | MK.XBUTTON2, lParam)
+			else:
+				windll.user32.PostMessageW(
+					self.hwnd, MouseWM.WM_XBUTTONUP,
+					wParam | MK.XBUTTON2, lParam)
+		else:
+			raise ValueError('Unsupported button for this platform')
+
+	def send_motion(self, position, flags):
+
+		wParam = 0 | flags
+		lParam = position.x | position.y << 16
+		windll.user32.PostMessageW(
+			self.hwnd, MouseWM.WM_MOUSEMOVE, wParam, lParam)
+
+	def send_axis(self, position, value, axis, flags):
+
+		wParam = 0 | flags | (value * WHEEL_DELTA) << 16
+		lParam = (self.position.x + position.x
+			| (self.position.y + position.y) << 16)
+		control = windll.user32.ChildWindowFromPoint(
+			self.hwnd, Point(position.x, position.y))
+		if axis is PointerAxis.VERTICAL:
+			windll.user32.PostMessageW(
+				control, MouseWM.WM_MOUSEWHEEL, -wParam, lParam)
+		elif axis is PointerAxis.HORIZONTAL:
+			windll.user32.PostMessageW(
+				self.hwnd, MouseWM.WM_MOUSEHWHEEL, wParam, lParam)
+		else:
+			raise TypeError('Unsupported axis type')

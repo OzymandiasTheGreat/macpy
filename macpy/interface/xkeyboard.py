@@ -24,12 +24,14 @@ class XKeyboard(object):
 	def __init__(self):
 
 		self.display = display.Display()
+		self.root = self.display.screen().root
 		self.translate = XTranslate()
 		self.translate.install_layout_hook()
 		self.queue = Queue()
 		self.mainloop = Thread(target=self._mainloop, name='XKeyboard mainloop')
 		self.mainloop.start()
 		self.hook = None
+		self.hook_grab = False
 		self.hotkeys = None
 		self.input = deque(maxlen=128)
 		self.hotstrings = {}
@@ -74,7 +76,7 @@ class XKeyboard(object):
 		state = [bit for mask in keymap for bit in parse_bitmask(mask)]
 		return KeyState(bool(state[key.ec + self.translate.min_keycode]))
 
-	def install_keyboard_hook(self, callback):
+	def install_keyboard_hook(self, callback, grab=False):
 
 		self.hook_callback = callback
 		self.hook_display = display.Display()
@@ -93,11 +95,15 @@ class XKeyboard(object):
 				'client_died': False,
 			}])
 		self.hook = Thread(target=self._hook, name='XKeyboard hook loop')
+		self.hook_grab = grab
 		self.hook.start()
 
 	def uninstall_keyboard_hook(self):
 
 		if self.hook and self.hook.is_alive():
+			if self.hook_grab:
+				self.display.ungrab_keyboard(X.CurrentTime)
+				self.hook_grab = False
 			self.display.record_disable_context(self.hook_ctx)
 			self.display.flush()
 			self.hook_display.record_free_context(self.hook_ctx)
@@ -106,6 +112,9 @@ class XKeyboard(object):
 	def _hook(self):
 
 		try:
+			if self.hook_grab:
+				self.root.grab_keyboard(
+					True, X.GrabModeAsync, X.GrabModeAsync, X.CurrentTime)
 			self.hook_display.record_enable_context(
 				self.hook_ctx, self.process_event)
 		except TypeError:
@@ -135,7 +144,7 @@ class XKeyboard(object):
 					event.detail, event.state)
 				char = None
 				if (keysym in PRINT
-						and not any(getattr(mods, mod) for mod in mods._asdict()
+						and not any(mods[mod] for mod in mods
 							if mod not in {'SHIFT', 'ALTGR'})):
 					char = PRINT[keysym]
 				key = Key.from_ec(event.detail - self.translate.min_keycode)
@@ -185,7 +194,7 @@ class XKeyboard(object):
 						event.detail, event.state)
 					key = Key.from_ec(event.detail - self.translate.min_keycode)
 					modifiers = []
-					for mod, state in mods._asdict().items():
+					for mod, state in mods.items():
 						if state:
 							try:
 								modifiers.append(getattr(Modifiers, mod)[0])
@@ -281,6 +290,8 @@ class XKeyboard(object):
 	def keypress(self, key, state=None):
 
 		keycode = key.ec + self.translate.min_keycode
+		if self.hook_grab:
+			self.enqueue(self.display.ungrab_keyboard, X.CurrentTime)
 		if state is None:
 			self.enqueue(self._press_key, keycode)
 			self.enqueue(self._release_key, keycode)
@@ -290,15 +301,21 @@ class XKeyboard(object):
 			self.enqueue(self._release_key, keycode)
 		else:
 			raise TypeError('Invalid state')
+		if self.hook_grab:
+			self.enqueue(
+				self.root.grab_keyboard,
+				True, X.GrabModeAsync, X.GrabModeAsync, X.CurrentTime)
 		self.enqueue(self.display.flush)
 
 	def _type(self, string):
 
+		if self.hook_grab:
+			self.display.ungrab_keyboard(X.CurrentTime)
 		for char in string:
 			keysym = self.translate.lookup_keysym(char)
 			keycode, mods, locks = self.translate.keysym_to_keycode(keysym)
 			if any(mods):
-				for mod, state in mods._asdict().items():
+				for mod, state in mods.items():
 					if state:
 						modcode = (
 							getattr(Modifiers, mod)[0].ec
@@ -307,13 +324,16 @@ class XKeyboard(object):
 			self._press_key(keycode)
 			self._release_key(keycode)
 			if any(mods):
-				for mod, state in mods._asdict().items():
+				for mod, state in mods.items():
 					if state:
 						modcode = (
 							getattr(Modifiers, mod)[0].ec
 							+ self.translate.min_keycode)
 						self._release_key(modcode)
-			self.display.flush()
+		self.display.flush()
+		if self.hook_grab:
+			self.root.grab_keyboard(
+					True, X.GrabModeAsync, X.GrabModeAsync, X.CurrentTime)
 
 	def type(self, string):
 

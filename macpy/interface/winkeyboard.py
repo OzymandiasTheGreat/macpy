@@ -15,7 +15,7 @@ from ..key import Key, KeyState, Modifiers
 from ..constant.windows import WH_KEYBOARD_LL, PM_REMOVE, LLKHF_INJECTED, KeyWM
 from ..constant.windows import MOD, WM_HOTKEY, KEYEVENTF, InputType
 from ..types.structures import KBDLLHOOKSTRUCT, INPUT, INPUTunion, KEYBDINPUT
-from ..types.tuples import KeyEvent, Modifiers as Mods, Locks
+from ..types.tuples import KeyEvent
 from ..event import KeyboardEvent, HotKey, HotString
 
 
@@ -84,10 +84,11 @@ class WinKeyboard(object):
 		output = windll.user32.GetAsyncKeyState(key.vk)
 		return KeyState(bool(output >> 8))
 
-	def install_keyboard_hook(self, callback):
+	def install_keyboard_hook(self, callback, grab=False):
 
 		self.hook_stop = False
 		self.hook_callback = callback
+		self.hook_grab = grab
 		self.hook = Thread(target=self._hook, name='WinKeyboard hook loop')
 		self.hook.start()
 
@@ -103,7 +104,10 @@ class WinKeyboard(object):
 			event = KeyEvent(
 				wParam, kbdllhook.vkCode, kbdllhook.scanCode, kbdllhook.flags)
 			self.enqueue(self.process_event, event)
-			return windll.user32.CallNextHookEx(hID, nCode, wParam, lParam)
+			if not self.hook_grab or event.flags & LLKHF_INJECTED:
+				return windll.user32.CallNextHookEx(hID, nCode, wParam, lParam)
+			else:
+				return True
 
 		try:
 			CMPFUNC = WINFUNCTYPE(c_int, c_int, c_int, POINTER(KBDLLHOOKSTRUCT))
@@ -181,7 +185,7 @@ class WinKeyboard(object):
 			if KeyWM(event.message) in {KeyWM.WM_KEYDOWN, KeyWM.WM_SYSKEYDOWN}
 			else KeyState.RELEASED)
 		self.enqueue(self.hook_callback, KeyboardEvent(
-			Key.from_vk(event.vk), keystate, char, Mods(**mods), Locks(**locks)))
+			Key.from_vk(event.vk), keystate, char, mods, locks))
 
 		if keystate == KeyState.PRESSED and self.hotstrings and char:
 			self.input.append(char)

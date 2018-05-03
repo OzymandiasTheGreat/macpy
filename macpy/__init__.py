@@ -63,7 +63,7 @@ class Keyboard(object):
 
 		return self._interface.get_key_state(key)
 
-	def install_keyboard_hook(self, callback):
+	def install_keyboard_hook(self, callback, grab=False):
 		"""Installs a low level hook that sends all keyboard input to
 		the callback.
 
@@ -73,9 +73,16 @@ class Keyboard(object):
 
 		Args:
 			callback (Callable): A callable which receives events.
+			grab (bool): If grab is :obj:`True` events are consumed and not
+				passed through to other applications.
+				Note:
+					Even if grab is :obj:`True`, synthetic events are still
+					allowed on Windows.
+
+					Under wayland this option does nothing.
 		"""
 
-		self._interface.install_keyboard_hook(callback)
+		self._interface.install_keyboard_hook(callback, grab=grab)
 
 	def uninstall_keyboard_hook(self):
 		"""Uninstall keyboard hook and stop hook's loop.
@@ -219,7 +226,7 @@ class Pointer(object):
 
 		self._interface.close()
 
-	def install_pointer_hook(self, callback):
+	def install_pointer_hook(self, callback, grab=False):
 		"""Installs a low level hook that sends all pointer events to
 		the callback.
 
@@ -231,9 +238,16 @@ class Pointer(object):
 
 		Args:
 			callback (Callable): A callable which will receive pointer events.
+			grab (bool): If grab is :obj:`True` events are consumed and not
+				passed through to other applications.
+				Note:
+					Even if grab is :obj:`True`, synthetic events are still
+					allowed on Windows.
+
+					Under wayland this option does nothing.
 		"""
 
-		self._interface.install_pointer_hook(callback)
+		self._interface.install_pointer_hook(callback, grab=grab)
 
 	def uninstall_pointer_hook(self):
 		"""Uninstalls pointer hook and stops hook's loop.
@@ -244,7 +258,7 @@ class Pointer(object):
 
 		self._interface.uninstall_pointer_hook()
 
-	def warp(self, x, y):
+	def warp(self, x, y, relative=False):
 		"""Warp pointer to the given location on screen.
 
 		Pointer cannot be warped beyond the bounds of the virtual screen.
@@ -252,9 +266,11 @@ class Pointer(object):
 		Args:
 			x (int): X coordinate.
 			y (int): Y coordinate.
+			relative (bool): Whether given coordinates are absolute or relative
+				to current pointer position.
 		"""
 
-		self._interface.warp(x, y)
+		self._interface.warp(x, y, relative)
 
 	def scroll(self, axis, value):
 		"""Simulate mouse scroll wheel along the given axis.
@@ -279,6 +295,28 @@ class Pointer(object):
 		"""
 
 		self._interface.click(key, state)
+
+	def get_button_state(self, button):
+		"""Check whether the button is pressed or released.
+
+		Args:
+			button (~macpy.key.Key): The button to check.
+		Returns:
+			~macpy.key.KeyState: Current state of the key.
+		"""
+
+		return self._interface.get_button_state(button)
+
+	@property
+	def position(self):
+		"""Current position of the pointer on screen.
+
+		Returns:
+			tuple: A namedtuple where first member is the x coordinate and the
+				second - y coordinate, in pixels.
+		"""
+
+		return self._interface.position
 
 
 class Window(with_metaclass(MetaWindow)):
@@ -541,3 +579,22 @@ class Window(with_metaclass(MetaWindow)):
 		"""
 
 		self._window.force_close()
+
+	def send_event(self, event):
+		"""Send an input event dirrectly to this window, regardless of whether
+		it has input focus.
+
+		Valid input events are :class:`~macpy.event.KeyboardEvent`,
+		:class:`~macpy.event.PointerEventMotion`,
+		:class:`~macpy.event.PointerEventButton` and
+		:class:`~macpy.event.PointerEventAxis`.
+
+		Note:
+			For events that contain coordinates, these coordinates are always
+			relative to this window.
+
+		Args:
+			event (~macpy.event.Event): Event to send.
+		"""
+
+		self._window.send_event(event)

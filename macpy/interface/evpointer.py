@@ -14,7 +14,7 @@ from libinput import PointerAxis as LIPAxis, PointerAxisSource
 from ..key import Key, KeyState, Modifiers as Mods
 from ..event import PointerAxis as mPAxis
 from ..event import PointerEventMotion, PointerEventButton, PointerEventAxis
-from ..types.tuples import MousePos, Modifiers
+from ..types.tuples import MousePos
 
 
 class EvPointer(object):
@@ -110,20 +110,20 @@ class EvPointer(object):
 				self.position = MousePos(x, y)
 				if self.hook_callback:
 					self.enqueue(self.hook_callback, PointerEventMotion(
-						self.position, Modifiers(**mods)))
+						self.position.x, self.position.y, mods))
 			elif event.type == EventType.POINTER_MOTION_ABSOLUTE:
 				x, y = event.transform_absolute_coords(
 					self.screen_width, self.screen_height)
 				self.position = MousePos(round(x), round(y))
 				if self.hook_callback:
 					self.enqueue(self.hook_callback, PointerEventMotion(
-						self.position, Modifiers(**mods)))
+						self.position.x, self.position.y, mods))
 			elif event.type == EventType.POINTER_BUTTON:
 				button = Key.from_ec(event.button)
 				state = KeyState(event.button_state.value)
 				if self.hook_callback:
 					self.enqueue(self.hook_callback, PointerEventButton(
-						button, state, Modifiers(**mods)))
+						self.position.x, self.position.y, button, state, mods))
 			elif event.type == EventType.POINTER_AXIS:
 				if event.has_axis(LIPAxis.SCROLL_VERTICAL):
 					axis = mPAxis.VERTICAL
@@ -133,9 +133,9 @@ class EvPointer(object):
 					value = event.get_axis_value(LIPAxis.SCROLL_HORIZONTAL)
 				if self.hook_callback:
 					self.enqueue(self.hook_callback, PointerEventAxis(
-						value, axis, Modifiers(**mods)))
+						self.position.x, self.position.y, value, axis, mods))
 
-	def install_pointer_hook(self, callback):
+	def install_pointer_hook(self, callback, grab=False):
 
 		self.hook_callback = callback
 
@@ -162,17 +162,21 @@ class EvPointer(object):
 
 		self.queue.put_nowait((method, args))
 
-	def _warp(self, x, y):
+	def _warp(self, x, y, relative=False):
 
-		dx = x - self.position.x
-		dy = y - self.position.y
+		if relative:
+			dx = x
+			dy = y
+		else:
+			dx = x - self.position.x
+			dy = y - self.position.y
 		self.uinput.write(ecodes.EV_REL, ecodes.REL_X, dx)
 		self.uinput.write(ecodes.EV_REL, ecodes.REL_Y, dy)
 		self.uinput.syn()
 
-	def warp(self, x, y):
+	def warp(self, x, y, relative=False):
 
-		self.enqueue(self._warp, x, y)
+		self.enqueue(self._warp, x, y, relative)
 
 	def _scroll(self, axis, value):
 
@@ -202,3 +206,13 @@ class EvPointer(object):
 	def click(self, key, state=None):
 
 		self.enqueue(self._click, key)
+
+	def get_button_state(self, button):
+
+		active_keys = set()
+		for dev in self.pointer_devs:
+			active_keys |= set(dev.active_keys())
+		if button.ec in active_keys:
+			return KeyState.PRESSED
+		else:
+			return KeyState.RELEASED

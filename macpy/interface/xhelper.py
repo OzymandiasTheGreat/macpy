@@ -17,7 +17,6 @@ from Xlib.error import BadValue
 from ..platform import PLATFORM, Platform, ARCH, Arch
 from ..constant import XK
 from ..constant.xmap import PRINT, KEYPAD, NOIDX, NAME
-from ..types.tuples import Modifiers, Locks
 
 
 class XTranslate(object):
@@ -164,8 +163,6 @@ class XTranslate(object):
 				index += 4
 		else:
 			index = 0
-		mods = Modifiers(**mods)
-		locks = Locks(**locks)
 		return index, mods, locks
 
 	def lookup_keysym(self, char):
@@ -192,8 +189,8 @@ class XTranslate(object):
 			elif index is 5:
 				mods['SHIFT'] = True
 				mods['ALTGR'] = True
-		mods = Modifiers(**mods)
-		locks = Locks(**locks)
+		mods = mods
+		locks = locks
 		return keycode, mods, locks
 
 	def install_layout_hook(self):

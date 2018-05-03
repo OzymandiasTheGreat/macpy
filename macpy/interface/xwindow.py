@@ -15,8 +15,12 @@ from ..constant.xatom import NET_WM_STATE_ADD, NET_WM_STATE_TOGGLE
 from ..constant.xatom import WM_CHANGE_STATE, NET_MOVERESIZE_WINDOW
 from ..constant.xatom import NET_CLOSE_WINDOW
 from ..event import WindowEventType as WinEType, WindowEvent, WindowState
+from ..event import KeyboardEvent, PointerEventMotion, PointerEventButton
+from ..event import PointerEventAxis, PointerAxis
 from ..types.tuples import WinPos, WinSize
 from ..types.dummy import Display
+from .xhelper import XTranslate
+from ..key import Key, KeyState
 
 class XWindow(with_metaclass(MetaWindow)):
 
@@ -36,6 +40,15 @@ class XWindow(with_metaclass(MetaWindow)):
 			self.xwindow = None
 		self.wm_class = self.get_wm_class()
 		self.pid = self.get_pid()
+
+		self.translate = XTranslate()
+		self.rebuttonmap = {
+			Key.BTN_LEFT: 1,
+			Key.BTN_MOUSE: 1,
+			Key.BTN_MIDDLE: 2,
+			Key.BTN_RIGHT: 3,
+			Key.BTN_SIDE: 8,
+			Key.BTN_EXTRA: 9}
 
 	def __hash__(self):
 
@@ -289,4 +302,150 @@ class XWindow(with_metaclass(MetaWindow)):
 	def force_close(self):
 
 		self.xwindow.kill_client()
+		self.disp.flush()
+
+	def send_event(self, event):
+
+		mask = 0
+		for mod, active in event.modifiers._asdict().items():
+			if active:
+				mask |= self.translate.modmask[mod]
+		if isinstance(event, KeyboardEvent):
+			self.send_key(event.key, event.state, mask)
+		elif isinstance(event, PointerEventMotion):
+			self.send_motion(event.position, mask)
+		elif isinstance(event, PointerEventButton):
+			self.send_button(event.position, event.button, event.state, mask)
+		elif isinstance(event, PointerEventAxis):
+			self.send_axis(event.position, event.value, event.axis, mask)
+		else:
+			raise TypeError('Unsupported event')
+
+	def send_key(self, key, state, mask):
+
+		if state is KeyState.PRESSED:
+			ev = xevent.KeyPress(
+				time=X.CurrentTime,
+				root=self.root,
+				window=self.xwindow,
+				same_screen=True,
+				child=X.NONE,
+				root_x=0,
+				root_y=0,
+				event_x=0,
+				event_y=0,
+				state=mask,
+				detail=key.ec + self.translate.min_keycode)
+			self.xwindow.send_event(ev)
+		elif state is KeyState.RELEASED:
+			ev = xevent.KeyRelease(
+				time=X.CurrentTime,
+				root=self.root,
+				window=self.xwindow,
+				same_screen=True,
+				child=X.NONE,
+				root_x=0,
+				root_y=0,
+				event_x=0,
+				event_y=0,
+				state=mask,
+				detail=key.ec + self.translate.min_keycode)
+			self.xwindow.send_event(ev)
+		else:
+			raise TypeError('Unsupported state')
+		self.disp.flush()
+
+	def send_motion(self, position, mask):
+
+		ev = xevent.MotionNotify(
+			time=X.CurrentTime,
+			root=self.root,
+			window=self.xwindow,
+			same_screen=True,
+			child=X.NONE,
+			root_x=0,
+			root_y=0,
+			event_x=position.x,
+			event_y=position.y,
+			state=mask,
+			detail=0)
+		self.xwindow.send_event(ev)
+		self.disp.flush()
+
+	def send_button(self, position, button, state, mask):
+
+		if state is KeyState.PRESSED:
+			ev = xevent.ButtonPress(
+				time=X.CurrentTime,
+				root=self.root,
+				window=self.xwindow,
+				same_screen=True,
+				child=X.NONE,
+				root_x=0,
+				root_y=0,
+				event_x=position.x,
+				event_y=position.y,
+				state=mask,
+				detail=self.rebuttonmap[button])
+			self.xwindow.send_event(ev)
+		elif state is KeyState.RELEASED:
+			ev = xevent.ButtonRelease(
+				time=X.CurrentTime,
+				root=self.root,
+				window=self.xwindow,
+				same_screen=True,
+				child=X.NONE,
+				root_x=0,
+				root_y=0,
+				event_x=position.x,
+				event_y=position.y,
+				state=mask,
+				detail=self.rebuttonmap[button])
+			self.xwindow.send_event(ev)
+		else:
+			raise TypeError('Unsupported state')
+		self.disp.flush()
+
+	def send_axis(self, position, value, axis, mask):
+
+		if axis is PointerAxis.VERTICAL:
+			if value < 0:
+				button = 4
+			else:
+				button = 5
+		elif axis is PointerAxis.HORIZONTAL:
+			if value < 0:
+				button = 6
+			else:
+				button = 7
+		else:
+			raise TypeError('Unsupported axis')
+
+		pev = xevent.ButtonPress(
+			time=X.CurrentTime,
+			root=self.root,
+			window=self.xwindow,
+			same_screen=True,
+			child=X.NONE,
+			root_x=0,
+			root_y=0,
+			event_x=position.x,
+			event_y=position.y,
+			state=mask,
+			detail=button)
+		rev = xevent.ButtonRelease(
+			time=X.CurrentTime,
+			root=self.root,
+			window=self.xwindow,
+			same_screen=True,
+			child=X.NONE,
+			root_x=0,
+			root_y=0,
+			event_x=position.x,
+			event_y=position.y,
+			state=mask,
+			detail=button)
+		for i in range(abs(value)):
+			self.xwindow.send_event(pev)
+			self.xwindow.send_event(rev)
 		self.disp.flush()
