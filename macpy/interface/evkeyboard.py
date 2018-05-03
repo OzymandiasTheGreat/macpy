@@ -125,7 +125,7 @@ class EvKeyboard(object):
 									key, keystate, char, mods, locks))
 							if self.hotkeys and event.keystate is 1:
 								modifiers = set()
-								for mod, state in mods._asdict().items():
+								for mod, state in mods.items():
 									if state:
 										modifiers.add(
 											getattr(Modifiers, mod)[0])
@@ -157,7 +157,7 @@ class EvKeyboard(object):
 											retstring)
 										self.input.clear()
 
-	def install_keyboard_hook(self, callback):
+	def install_keyboard_hook(self, callback, grab=False):
 
 		if not self.events.is_alive():
 			self.events.start()
@@ -237,7 +237,7 @@ class EvKeyboard(object):
 			keycode, mods, locks = self.translate.keysym_to_keycode(keysym)
 			key = Key.from_ec(keycode - self.translate.min_keycode)
 			if any(mods):
-				for mod, state in mods._asdict().items():
+				for mod, state in mods.items():
 					if state:
 						modifier = getattr(Modifiers, mod, None)
 						if modifier:
@@ -245,7 +245,7 @@ class EvKeyboard(object):
 			self._press_key(key)
 			self._release_key(key)
 			if any(mods):
-				for mod, state in mods._asdict().items():
+				for mod, state in mods.items():
 					if state:
 						modifier = getattr(Modifiers, mod, None)
 						if modifier:

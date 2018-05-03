@@ -9,6 +9,7 @@ try:
 	from time import monotonic
 except ImportError:
 	from monotonic import monotonic
+from .types.tuples import MousePos, Modifiers, Locks
 
 
 class PointerAxis(Enum):
@@ -71,11 +72,11 @@ class PointerEventMotion(Event):
 			the time of this event.
 	"""
 
-	def __init__(self, position, modifiers):
+	def __init__(self, x, y, modifiers):
 
 		Event.__init__(self)
-		self.position = position
-		self.modifiers = modifiers
+		self.position = MousePos(x, y)
+		self.modifiers = Modifiers(**modifiers)
 
 
 class PointerEventButton(Event):
@@ -89,12 +90,13 @@ class PointerEventButton(Event):
 			the time of this event.
 	"""
 
-	def __init__(self, button, state, modifiers):
+	def __init__(self, x, y, button, state, modifiers):
 
 		Event.__init__(self)
+		self.position = MousePos(x, y)
 		self.button = button
 		self.state = state
-		self.modifiers = modifiers
+		self.modifiers = Modifiers(**modifiers)
 
 
 class PointerEventAxis(Event):
@@ -107,12 +109,13 @@ class PointerEventAxis(Event):
 			the time of this event.
 	"""
 
-	def __init__(self, value, axis, modifiers):
+	def __init__(self, x, y, value, axis, modifiers):
 
 		Event.__init__(self)
+		self.position = MousePos(x, y)
 		self.value = value
 		self.axis = axis
-		self.modifiers = modifiers
+		self.modifiers = Modifiers(**modifiers)
 
 
 class KeyboardEvent(Event):
@@ -135,8 +138,8 @@ class KeyboardEvent(Event):
 		self.key = key
 		self.state = state
 		self.char = char
-		self.modifiers = modifiers
-		self.locks = locks
+		self.modifiers = Modifiers(**modifiers)
+		self.locks = Locks(**locks)
 
 
 class HotKey(Event):

@@ -38,11 +38,19 @@ class XPointer(object):
 			Key.BTN_RIGHT: 3,
 			Key.BTN_SIDE: 8,
 			Key.BTN_EXTRA: 9}
+		self.buttonmask = {
+			Key.BTN_LEFT: X.Button1Mask,
+			Key.BTN_MOUSE: X.Button1Mask,
+			Key.BTN_MIDDLE: X.Button2Mask,
+			Key.BTN_RIGHT: X.Button3Mask,
+			Key.BTN_SIDE: 1 << 15,
+			Key.BTN_EXTRA: 1 << 16}
 
 		self.queue = Queue()
 		self.mainloop = Thread(target=self._mainloop, name='XPointer mainloop')
 		self.mainloop.start()
 		self.hook = None
+		self.hook_grab = False
 
 	def _mainloop(self):
 
@@ -63,7 +71,7 @@ class XPointer(object):
 
 		self.queue.put_nowait((method, args))
 
-	def install_pointer_hook(self, callback):
+	def install_pointer_hook(self, callback, grab=False):
 
 		self.hook = Thread(target=self._hook, name='XPointer hook loop')
 		self.hook_callback = callback
@@ -82,11 +90,15 @@ class XPointer(object):
 				'client_started': False,
 				'client_died': False,
 			}])
+		self.hook_grab = grab
 		self.hook.start()
 
 	def uninstall_pointer_hook(self):
 
 		if self.hook and self.hook.is_alive():
+			if self.hook_grab:
+				self.display.ungrab_pointer(X.CurrentTime)
+				self.hook_grab = False
 			self.display.record_disable_context(self.hook_ctx)
 			self.display.flush()
 			self.hook_display.record_free_context(self.hook_ctx)
@@ -95,6 +107,12 @@ class XPointer(object):
 	def _hook(self):
 
 		try:
+			if self.hook_grab:
+				mask = (X.ButtonMotionMask | X.ButtonPressMask
+					| X.ButtonReleaseMask | X.PointerMotionMask)
+				self.root.grab_pointer(
+					True, mask, X.GrabModeAsync, X.GrabModeAsync,
+					X.NONE, X.NONE, X.CurrentTime)
 			self.hook_display.record_enable_context(
 				self.hook_ctx, self.process_events)
 		except TypeError:
@@ -134,14 +152,15 @@ class XPointer(object):
 				mods['META'] = True
 			if event.type == X.MotionNotify:
 				self.enqueue(self.hook_callback, PointerEventMotion(
-					MousePos(event.root_x, event.root_y), Modifiers(**mods)))
+					event.root_x, event.root_y, mods))
 			elif event.type in {X.ButtonPress, X.ButtonRelease}:
 				button = event.detail
 				state = (KeyState.PRESSED if event.type == X.ButtonPress
 					else KeyState.RELEASED)
 				if button in {1, 2, 3, 8, 9}:
 					self.enqueue(self.hook_callback, PointerEventButton(
-						self.buttonmap[button], state, Modifiers(**mods)))
+						event.root_x, event.root_y,
+						self.buttonmap[button], state, mods))
 				elif button in {4, 5, 6, 7}:
 					axis = (PointerAxis.VERTICAL if button in {4, 5}
 						else PointerAxis.HORIZONTAL)
@@ -150,7 +169,8 @@ class XPointer(object):
 					else:
 						value = 1
 					self.enqueue(self.hook_callback, PointerEventAxis(
-						value, axis, Modifiers(**mods)))
+						event.root_x, event.root_y,
+						value, axis, mods))
 
 	def close(self):
 
@@ -158,17 +178,28 @@ class XPointer(object):
 			self.uninstall_pointer_hook()
 		self.enqueue(None)
 
-	def _warp(self, x, y):
+	def _warp(self, x, y, relative=False):
 
-		xtest.fake_input(self.display, X.MotionNotify, x=x, y=y)
+		if self.hook_grab:
+			self.display.ungrab_pointer(X.CurrentTime)
+		xtest.fake_input(
+			self.display, X.MotionNotify, x=x, y=y, detail=int(relative))
 		self.display.flush()
+		if self.hook_grab:
+			mask = (X.ButtonMotionMask | X.ButtonPressMask
+				| X.ButtonReleaseMask | X.PointerMotionMask)
+			self.root.grab_pointer(
+				True, mask, X.GrabModeAsync, X.GrabModeAsync,
+				X.NONE, X.NONE, X.CurrentTime)
 
-	def warp(self, x, y):
+	def warp(self, x, y, relative=False):
 
-		self.enqueue(self._warp, x, y)
+		self.enqueue(self._warp, x, y, relative)
 
 	def _scroll(self, axis, value):
 
+		if self.hook_grab:
+			self.display.ungrab_pointer(X.CurrentTime)
 		if axis is PointerAxis.VERTICAL:
 			if value < 0:
 				button = 4
@@ -185,6 +216,12 @@ class XPointer(object):
 			xtest.fake_input(self.display, X.ButtonPress, button)
 			xtest.fake_input(self.display, X.ButtonRelease, button)
 			self.display.flush()
+		if self.hook_grab:
+			mask = (X.ButtonMotionMask | X.ButtonPressMask
+				| X.ButtonReleaseMask | X.PointerMotionMask)
+			self.root.grab_pointer(
+				True, mask, X.GrabModeAsync, X.GrabModeAsync,
+				X.NONE, X.NONE, X.CurrentTime)
 
 	def scroll(self, axis, value):
 
@@ -192,21 +229,67 @@ class XPointer(object):
 
 	def _click(self, key, state=None):
 
+		if self.hook_grab:
+			self.display.ungrab_pointer(X.CurrentTime)
 		if state is None:
 			xtest.fake_input(
 				self.display, X.ButtonPress, self.rebuttonmap[key])
+			self.display.flush()
+			if self.hook_grab:
+				mask = (X.ButtonMotionMask | X.ButtonPressMask
+					| X.ButtonReleaseMask | X.PointerMotionMask)
+				self.root.grab_pointer(
+					True, mask, X.GrabModeAsync, X.GrabModeAsync,
+					X.NONE, X.NONE, X.CurrentTime)
 			xtest.fake_input(
 				self.display, X.ButtonRelease, self.rebuttonmap[key])
+			self.display.flush()
+			if self.hook_grab:
+				mask = (X.ButtonMotionMask | X.ButtonPressMask
+					| X.ButtonReleaseMask | X.PointerMotionMask)
+				self.root.grab_pointer(
+					True, mask, X.GrabModeAsync, X.GrabModeAsync,
+					X.NONE, X.NONE, X.CurrentTime)
 		elif state is KeyState.PRESSED:
 			xtest.fake_input(
 				self.display, X.ButtonPress, self.rebuttonmap[key])
+			self.display.flush()
+			if self.hook_grab:
+				mask = (X.ButtonMotionMask | X.ButtonPressMask
+					| X.ButtonReleaseMask | X.PointerMotionMask)
+				self.root.grab_pointer(
+					True, mask, X.GrabModeAsync, X.GrabModeAsync,
+					X.NONE, X.NONE, X.CurrentTime)
 		elif state is KeyState.RELEASED:
 			xtest.fake_input(
 				self.display, X.ButtonRelease, self.rebuttonmap[key])
+			self.display.flush()
+			if self.hook_grab:
+				mask = (X.ButtonMotionMask | X.ButtonPressMask
+					| X.ButtonReleaseMask | X.PointerMotionMask)
+				self.root.grab_pointer(
+					True, mask, X.GrabModeAsync, X.GrabModeAsync,
+					X.NONE, X.NONE, X.CurrentTime)
 		else:
 			raise RuntimeError('Invalid state')
-		self.display.flush()
 
 	def click(self, key, state=None):
 
 		self.enqueue(self._click, key, state)
+
+	@property
+	def position(self):
+
+		qpointer = self.root.query_pointer()
+		return MousePos(qpointer.root_x, qpointer.root_y)
+
+	def get_button_state(self, button):
+
+		if button in self.buttonmask:
+			qpointer = self.root.query_pointer()
+			if qpointer.mask & self.buttonmask[button]:
+				return KeyState.PRESSED
+			else:
+				return KeyState.RELEASED
+		else:
+			raise ValueError('Unsupported button')
