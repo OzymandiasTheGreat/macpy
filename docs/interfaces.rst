@@ -3,6 +3,9 @@ Interfaces
 
 .. module:: macpy
 
+.. autofunction:: record
+.. autofunction:: replay
+
 Keyboard
 ~~~~~~~~
 

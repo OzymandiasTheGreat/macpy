@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 
 from six import with_metaclass
+import sys
+if sys.version_info >= (3, 6):
+	from enum import Enum, auto
+else:
+	from aenum import Enum, auto
+import time
 from .version import __version__
 from .key import Key, KeyState
 from .event import PointerAxis, WindowEventType, WindowState, Event, WindowEvent
@@ -25,7 +31,7 @@ else:
 __all__ = ('Key', 'KeyState', 'PointerAxis', 'WindowEventType', 'WindowState',
 	'Event', 'WindowEvent', 'KeyboardEvent', 'HotKey', 'HotString',
 	'PointerEventMotion', 'PointerEventButton', 'PointerEventAxis',
-	'Keyboard', 'Pointer', 'Window')
+	'Keyboard', 'Pointer', 'Window', 'RecordType', 'record', 'replay')
 
 
 class Keyboard(object):
@@ -598,3 +604,103 @@ class Window(with_metaclass(MetaWindow)):
 		"""
 
 		self._window.send_event(event)
+
+
+class RecordType(Enum):
+	"""An enumeration specifying which events to record.
+
+	Attributes:
+		KEYBOARD: Record keyboard events only.
+		POINTER: Record pointer events only.
+		BOTH: Record both keyboard and pointer events.
+	"""
+
+	KEYBOARD = auto()
+	POINTER = auto()
+	BOTH = auto()
+
+
+def record(record_type, stop_key=None, timer=None):
+	"""Record events of record_type and return a list.
+
+	Args:
+		record_type (RecordType): The type of events to record.
+		stop_key (~macpy.key.Key): The key or button which will end the
+			recording. If stop_key is :obj:`None` the recording will go on
+			until timer runs out.
+		timer (float): The duration of recording session. If timer is
+			:obj:`None` the session will go on until specified key is pressed.
+	Returns:
+		[~macpy.event.Event]: A list of recorded events.
+	"""
+
+	def process_event(event):
+
+		nonlocal stop
+		if isinstance(event, KeyboardEvent):
+			if event.key == stop_key:
+				stop = True
+				return
+		elif isinstance(event, PointerEventButton):
+			if event.button == stop_key:
+				stop = True
+				return
+		event_list.append(event)
+
+	event_list = []
+	stop = False
+
+	if not isinstance(record_type, RecordType):
+		raise TypeError('Unsupported record type')
+	if record_type is RecordType.KEYBOARD or record_type is RecordType.BOTH:
+		keyboard = Keyboard()
+		keyboard.install_keyboard_hook(process_event)
+	if record_type is RecordType.POINTER or record_type is RecordType.BOTH:
+		pointer = Pointer()
+		pointer.install_pointer_hook(process_event)
+
+	if timer is None:
+		while not stop:
+			time.sleep(0.005)
+	else:
+		time.sleep(timer)
+
+	if record_type is RecordType.KEYBOARD or record_type is RecordType.BOTH:
+		keyboard.close()
+	if record_type is RecordType.POINTER or record_type is RecordType.BOTH:
+		pointer.close()
+
+	return event_list
+
+
+def replay(event_list, delay=0):
+	"""Replay events from a sequence.
+
+	Args:
+		event_list ([~macpy.event.Event]): A sequence of events.
+		delay (float): The seconds to wait between each event (or pair).
+	"""
+
+	keyboard = Keyboard()
+	pointer = Pointer()
+
+	for event in event_list:
+		if isinstance(event, KeyboardEvent):
+			keyboard.keypress(event.key, event.state)
+			if event.state is KeyState.RELEASED:
+				time.sleep(delay)
+		elif isinstance(event, PointerEventMotion):
+			pointer.warp(event.position.x, event.position.y)
+			time.sleep(delay)
+		elif isinstance(event, PointerEventButton):
+			pointer.click(event.button, event.state)
+			if event.state is KeyState.RELEASED:
+				time.sleep(delay)
+		elif isinstance(event, PointerEventAxis):
+			pointer.scroll(event.axis, event.value)
+			time.sleep(delay)
+		else:
+			raise TypeError('Unsupported event')
+
+	keyboard.close()
+	pointer.close()

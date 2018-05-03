@@ -1,6 +1,12 @@
 Enumerations
 ------------
 
+.. module:: macpy
+
+
+.. autoclass:: RecordType
+   :members:
+
 
 .. module:: macpy.key
 
