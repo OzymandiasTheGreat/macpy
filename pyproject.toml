@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "macpy"
+version = "0.1.2b"
+description = "Simple, cross-platform macros/GUI automation for python"
+authors = ["Ozymandias <tomas.rav@gmail.com>"]
+readme = "README.rst"
+repository = "https://github.com/OzymandiasTheGreat/macpy"
+license = "LGPL-3.0-or-later"
+classifiers = [
+	"Development Status :: 4 - Beta",
+	"Intended Audience :: Developers",
+	"Environment :: Win32 (MS Windows)",
+	"Environment :: X11 Applications",
+	"Operating System :: Microsoft :: Windows",
+	"Operating System :: POSIX :: Linux",
+]
+
+[tool.poetry.dependencies]
+python = "^3.6"
+python-xlib = { version = "^0.26", markers = "sys_platform == 'linux'" }
+evdev = { version = "^1.3.0", markers = "sys_platform == 'linux'" }
+python-libinput = { version = "^0.1.0", markers = "sys_platform == 'linux'" }
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"

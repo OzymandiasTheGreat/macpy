@@ -1,9 +1,11 @@
 __pycache__
+.venv
 *.pyc
+*.egg-info
+dist
 *test*
 *_old.*
 todo
-VMsync.sh
 _build
 _templates
 _static

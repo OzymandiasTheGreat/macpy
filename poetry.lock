@@ -1,0 +1,54 @@
+[[package]]
+category = "main"
+description = "Bindings to the Linux input handling subsystem"
+name = "evdev"
+optional = false
+python-versions = "*"
+version = "1.3.0"
+
+[[package]]
+category = "main"
+description = "Object-oriented wrapper for libinput using ctypes"
+name = "python-libinput"
+optional = false
+python-versions = "*"
+version = "0.1.0"
+
+[[package]]
+category = "main"
+description = "Python X Library"
+name = "python-xlib"
+optional = false
+python-versions = "*"
+version = "0.26"
+
+[package.dependencies]
+six = ">=1.10.0"
+
+[[package]]
+category = "main"
+description = "Python 2 and 3 compatibility utilities"
+name = "six"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*"
+version = "1.14.0"
+
+[metadata]
+content-hash = "1de0321df2b5dc09d064e88525f5d697b5ba669e484fbb67eee65f814af2bedd"
+python-versions = "^3.6"
+
+[metadata.files]
+evdev = [
+    {file = "evdev-1.3.0.tar.gz", hash = "sha256:b1c649b4fed7252711011da235782b2c260b32e004058d62473471e5cd30634d"},
+]
+python-libinput = [
+    {file = "python-libinput-0.1.0.tar.gz", hash = "sha256:e6b20e7fd889001fe74b01a1ff456e5f53c9ed01b016d6ceb65b6f573f129758"},
+]
+python-xlib = [
+    {file = "python-xlib-0.26.tar.bz2", hash = "sha256:b819c7e5f55830305919d78ea42b0cbd5e13687f5d12aa53556c33674b9876df"},
+    {file = "python_xlib-0.26-py2.py3-none-any.whl", hash = "sha256:244570b93cb82f5ceea3e4c861b4a0fffcea36947efa10fd63b7aa69d30047a8"},
+]
+six = [
+    {file = "six-1.14.0-py2.py3-none-any.whl", hash = "sha256:8f3cd2e254d8f793e7f3d6d9df77b92252b52637291d0f0da013c76ea2724b6c"},
+    {file = "six-1.14.0.tar.gz", hash = "sha256:236bdbdce46e6e6a3d61a337c0f8b763ca1e8717c03b369e87a7ec7ce1319c0a"},
+]
