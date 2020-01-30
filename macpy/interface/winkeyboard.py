@@ -114,6 +114,7 @@ class WinKeyboard(object):
 			hPointer = CMPFUNC(low_level_handler)
 			windll.kernel32.GetModuleHandleW.restype = wintypes.HMODULE
 			windll.kernel32.GetModuleHandleW.argtypes = (wintypes.LPCWSTR, )
+			windll.user32.SetWindowsHookExW.argtypes = (c_int, wintypes.HANDLE, wintypes.HMODULE, wintypes.DWORD)
 			hID = windll.user32.SetWindowsHookExW(
 				WH_KEYBOARD_LL, hPointer,
 				windll.kernel32.GetModuleHandleW(None), 0)
