@@ -12,7 +12,7 @@ from itertools import combinations
 from collections import deque
 from Xlib import display, X
 from Xlib.ext import record, xtest
-from Xlib.protocol import rq, event
+from Xlib.protocol import rq
 from .xhelper import XTranslate
 from ..key import Key, KeyState, Modifiers
 from ..constant.xmap import PRINT
@@ -199,8 +199,8 @@ class XKeyboard(object):
 							try:
 								modifiers.append(getattr(Modifiers, mod)[0])
 							except AttributeError:
-								pass # ALTGR is only defined under X so we
-									 # ignore it here for consistency
+								pass  # ALTGR is only defined under X so we
+									  # noqa ignore it here for consistency
 					hotkey = HotKey(key, modifiers)
 					if hotkey in self.hk_callbacks:
 						self.enqueue(self.hk_callbacks[hotkey], hotkey)
@@ -333,7 +333,7 @@ class XKeyboard(object):
 		self.display.flush()
 		if self.hook_grab:
 			self.root.grab_keyboard(
-					True, X.GrabModeAsync, X.GrabModeAsync, X.CurrentTime)
+				True, X.GrabModeAsync, X.GrabModeAsync, X.CurrentTime)
 
 	def type(self, string):
 
