@@ -293,7 +293,7 @@ class WinWindow(with_metaclass(MetaWindow)):
 			if event.state is KeyState.PRESSED:
 				for mod, active in mods.items():
 					if active:
-						if mod is 'ALTGR':
+						if mod == 'ALTGR':
 							self.send_input(self.pack_input(
 								Key.KEY_RIGHTALT.vk, 0))
 							self.send_input(self.pack_input(
@@ -328,7 +328,7 @@ class WinWindow(with_metaclass(MetaWindow)):
 					raise TypeError('Unsupported event type')
 				for mod, active in mods.items():
 					if active:
-						if mod is 'ALTGR':
+						if mod == 'ALTGR':
 							self.send_input(self.pack_input(
 								Key.KEY_LEFTCTRL.vk, KEYEVENTF.KEYUP))
 							self.send_input(self.pack_input(
@@ -346,7 +346,7 @@ class WinWindow(with_metaclass(MetaWindow)):
 				flags |= MK.CONTROL
 			for mod, active in mods.items():
 				if active:
-					if mod is 'ALTGR':
+					if mod == 'ALTGR':
 						self.send_input(self.pack_input(Key.KEY_RIGHTALT.vk, 0))
 						self.send_input(self.pack_input(Key.KEY_LEFTCTRL.vk, 0))
 					else:
@@ -360,7 +360,7 @@ class WinWindow(with_metaclass(MetaWindow)):
 				raise TypeError('Unsupported event type')
 			for mod, active in mods.items():
 				if active:
-					if mod is 'ALTGR':
+					if mod == 'ALTGR':
 						self.send_input(self.pack_input(
 							Key.KEY_LEFTCTRL.vk, KEYEVENTF.KEYUP))
 						self.send_input(self.pack_input(

@@ -669,7 +669,7 @@ class Key(tuple, UndefEnum):
 		# None is a valid Key tuple member, so set vars to False and
 		# explicitly check their value by identity
 		event_code = virtual_keycode = False
-		if (isinstance(value, Sequence) and len(value) is 2):
+		if (isinstance(value, Sequence) and len(value) == 2):
 			if isinstance(value[0], EC) or value[0] is None:
 				event_code = value[0]
 			else:
