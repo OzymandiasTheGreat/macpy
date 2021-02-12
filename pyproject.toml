@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "macpy"
-version = "0.1.2"
+version = "0.1.3"
 description = "Simple, cross-platform macros/GUI automation for python"
 authors = ["Ozymandias <tomas.rav@gmail.com>"]
 readme = "README.rst"
