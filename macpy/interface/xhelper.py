@@ -242,7 +242,7 @@ class XLayout(Thread):
 				r'(?P<group>\w+)(?:\((?P<variant>\w+)\))?')
 			self.parse_xkbmap = re.compile(
 				r'layout\:\s+(?P<layouts>[\w\,]+)\s*'
-				+ r'variant\:\s+(?P<variants>[\w\,]+)\s*',
+				+ r'(?:variant\:\s+(?P<variants>[\w\,]+)\s*)?',
 				re.MULTILINE)
 			self.xkbswitch = self.load_libxkbswitch()
 			output = self.xkbswitch.Xkb_Switch_getXkbLayout()
@@ -285,7 +285,7 @@ class XLayout(Thread):
 			match = self.parse_xkbmap.search(output)
 			if match:
 				layouts = match.group('layouts').split(',')
-				variants = match.group('variants').split(',')
+				variants = match.group('variants').split(',') if match.group('variants') else ["" for i in layouts]
 				result = tuple(zip(layouts, variants))
 			else:
 				result = tuple()
