@@ -181,12 +181,12 @@ class XTranslate(object):
 			index = self.keymap[keycode - self.min_keycode].index(keysym)
 		except ValueError:
 			index = 0
-		if index is not 0 and index is not 2:
-			if index is 1:
+		if index != 0 and index != 2:
+			if index == 1:
 				mods['SHIFT'] = True
-			elif index is 4:
+			elif index == 4:
 				mods['ALTGR'] = True
-			elif index is 5:
+			elif index == 5:
 				mods['SHIFT'] = True
 				mods['ALTGR'] = True
 		mods = mods

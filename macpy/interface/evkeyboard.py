@@ -94,7 +94,7 @@ class EvKeyboard(object):
 					if isinstance(event, KeyEvent):
 						if event.keystate < 2:
 							key = Key.from_ec(event.event.code)
-							keystate = (KeyState.PRESSED if event.keystate is 1
+							keystate = (KeyState.PRESSED if event.keystate == 1
 								else KeyState.RELEASED)
 							mask = 0
 							leds = [led for keyboard in self.keyboards
@@ -123,7 +123,7 @@ class EvKeyboard(object):
 							if self.hook:
 								self.enqueue(self.hook_callback, KeyboardEvent(
 									key, keystate, char, mods, locks))
-							if self.hotkeys and event.keystate is 1:
+							if self.hotkeys and event.keystate == 1:
 								modifiers = set()
 								for mod, state in mods.items():
 									if state:
@@ -133,7 +133,7 @@ class EvKeyboard(object):
 								if hotkey in self.hk_callbacks:
 									self.enqueue(
 										self.hk_callbacks[hotkey], hotkey)
-							if self.hotstrings and event.keystate is 0 and char:
+							if self.hotstrings and event.keystate == 0 and char:
 								self.input.append(char)
 								string = ''.join(self.input)
 								for hotstring in self.hotstrings:
